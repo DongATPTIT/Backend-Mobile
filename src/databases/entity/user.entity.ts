@@ -2,6 +2,9 @@ import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "ty
 import { Group } from "./group.entity";
 import { group } from "console";
 import { Prescuption } from "./prescuption.entity";
+import { ApiProperty } from "@nestjs/swagger";
+import { IsOptional } from "class-validator";
+import { Exclude } from "class-transformer";
 
 
 @Entity()
@@ -25,12 +28,16 @@ export class User {
     @Column()
     phone: number;
 
-    @Column()
+    @Column({ default: null })
     image: string;
 
     @ManyToOne(() => Group, (group) => group.user)
     group: Group;
 
-    @OneToMany(() => Prescuption, (prescuption) => prescuption.user)
-    prescuption: Prescuption[];
+    // @OneToMany(() => Prescuption, (prescuption) => prescuption.user)
+    // prescuption: Prescuption[];
+
+    @Exclude()
+    @Column({ default: null })
+    refreshToken: string;
 }

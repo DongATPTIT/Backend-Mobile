@@ -8,7 +8,7 @@ export class Prescuption {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @ManyToOne(() => User, (user) => user.prescuption)
+    @ManyToOne(() => User)
     user: User;
 
     // @ManyToMany(())

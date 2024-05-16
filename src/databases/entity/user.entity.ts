@@ -1,10 +1,7 @@
-import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { Group } from "./group.entity";
-import { group } from "console";
-import { Prescuption } from "./prescuption.entity";
-import { ApiProperty } from "@nestjs/swagger";
-import { IsOptional } from "class-validator";
 import { Exclude } from "class-transformer";
+import { Apoiment } from "./apoiment.entity";
 
 
 @Entity()
@@ -34,10 +31,14 @@ export class User {
     @ManyToOne(() => Group, (group) => group.user)
     group: Group;
 
-    // @OneToMany(() => Prescuption, (prescuption) => prescuption.user)
-    // prescuption: Prescuption[];
+    @OneToMany(() => Apoiment, (photo) => photo.user)
+    apoiment: Apoiment[]
 
     @Exclude()
     @Column({ default: null })
     refreshToken: string;
+
+    @Exclude()
+    @Column({ default: null })
+    deviceToken: string;
 }

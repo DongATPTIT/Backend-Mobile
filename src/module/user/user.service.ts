@@ -13,7 +13,15 @@ export class UserService {
         // private readonly producerService: ProducerService,
     ) { }
 
-
+    async sendDeviceToken(userId: number, token: string) {
+        const result = await this.userRepository
+            .createQueryBuilder()
+            .update(User)
+            .set({ deviceToken: token })
+            .where('id = :userId', { userId })
+            .execute();
+        return result;
+    }
     async findByEmail(email: string) {
         return await this.userRepository.findOne({ where: { username: email } });
     }
@@ -51,7 +59,7 @@ export class UserService {
                     user: user
                 };
             } else {
-                throw new error("User not found");
+                throw new error("User not founds");
             }
         }
         catch (error) {

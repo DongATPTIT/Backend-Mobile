@@ -14,10 +14,18 @@ import { UserModule } from './module/user/user.module';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from './common/guards/auth.guard';
 import { AllExceptionsFilter } from './common/exceptions/all.exceptions';
+import { FcmNotificationModule } from './module/fcm-notification/fcm-notification.module';
+import { Apoiment } from './databases/entity/apoiment.entity';
+import { ApoimentModule } from './module/apoiment/apoiment.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { taskScheduleService } from './module/task-schedule/task-schedule.service';
+import { ApoimentService } from './module/apoiment/apoiment.service';
+import { FcmNotificationService } from './module/fcm-notification/fcm-notification.service';
 
 @Module({
   imports: [
     ConfigModule.forRoot(),
+    ScheduleModule.forRoot(),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -34,6 +42,7 @@ import { AllExceptionsFilter } from './common/exceptions/all.exceptions';
           "src/migrations/*.ts",
           "dist/migrations/*{.ts,.js}"
         ],
+
         cli: {
           entitiesDir: __dirname + '/src/databases/entities',
           migrationsDir: "src/migrations",
@@ -42,9 +51,11 @@ import { AllExceptionsFilter } from './common/exceptions/all.exceptions';
         synchronize: true,
       })
     }),
-    TypeOrmModule.forFeature([User, Group, Prescuption, Health, Booking, Medicine, Schedule, TakeMedicine]),
+    TypeOrmModule.forFeature([User, Group, Prescuption, Health, Booking, Medicine, Schedule, TakeMedicine, Apoiment]),
     AuthModule,
-    UserModule
+    UserModule,
+    FcmNotificationModule,
+    ApoimentModule
   ],
   controllers: [],
   providers: [
@@ -53,13 +64,12 @@ import { AllExceptionsFilter } from './common/exceptions/all.exceptions';
       useClass: AuthGuard,
     },
     // {
-    //   provide: APP_GUARD,
-    //   useClass: RolesGuard,
+    //   provide: APP_FILTER,
+    //   useClass: AllExceptionsFilter,
     // },
-    {
-      provide: APP_FILTER,
-      useClass: AllExceptionsFilter,
-    },
+    taskScheduleService,
+    ApoimentService,
+    FcmNotificationService
   ],
 })
 export class AppModule { }

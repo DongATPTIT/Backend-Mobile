@@ -19,7 +19,10 @@ export class UserController {
         private readonly userService: UserService,
     ) { }
 
-    @Roles(UserRoles.ADMIN)
+    // Get------------------------------------------------------
+
+
+
     @ApiOperation({ summary: "Admin lấy tất cả user" })
     @Get()
     async findUser() {
@@ -30,7 +33,8 @@ export class UserController {
             throw new HttpException("Can not get users ", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    @Roles(UserRoles.ADMIN)
+
+
     @ApiOperation({ summary: "Admin tìm kiếm người dùng theo keyword" })
     @Get('/:keyword')
     async findByname(@Param('keyword') keyword: string) {
@@ -42,7 +46,12 @@ export class UserController {
             throw new HttpException("Can not get users ", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    @Roles(UserRoles.ADMIN)
+
+
+
+    // Patch------------------------------------------------------
+
+
     @ApiOperation({ summary: "Admin thay đổi thông tin người dùng " })
     @Patch('/:id')
     async update(@Param() param: IdParamDto, @Body(new ValidationPipe()) body: UserDto) {
@@ -54,7 +63,9 @@ export class UserController {
         }
     }
 
-    @Roles(UserRoles.ADMIN)
+
+    // Delete ----------------------------------------------------
+
     @ApiOperation({ summary: "Admin xóa người dùng" })
     @Delete('/:id')
     async delete(@Param() param: IdParamDto) {
@@ -65,15 +76,26 @@ export class UserController {
             throw new HttpException("Can not delete user", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    // @Public()
-    // @Get('/send/sendmail')
-    // async sendMail(@Body() user: any) {
-    //     try {
-    //         const result = await this.userService.sendMail(user);
-    //         return successMessage(result);
-    //     }
-    //     catch {
-    //         throw new HttpException("Can not send mail ", HttpStatus.INTERNAL_SERVER_ERROR);
-    //     }
-    // }
+
+
+
+
+    // Post----------------------------------------------------
+
+
+    @Post('/save-device-token/:id')
+    async saveDeviceToken(@Param('id') id: number, @Body('token') token: string) {
+        try {
+            console.log("token", token)
+            return await this.userService.sendDeviceToken(id, token);
+
+        } catch (error) {
+            throw new Error(error);
+        }
+    }
+
+
+
+
+
 }

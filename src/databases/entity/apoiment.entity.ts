@@ -1,5 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
-import { User } from "./user.entity";
+import { DeviceSession } from "./device-session.entity";
 
 
 @Entity()
@@ -10,10 +10,13 @@ export class Apoiment {
     @Column({ type: 'time', default: null })
     time: Date;
 
-    @ManyToOne(() => User, (user) => user.apoiment)
-    @JoinColumn({ name: "userId" })
-    user: User
+    @ManyToOne(() => DeviceSession, (deviceSession) => deviceSession.apoiment)
+    @JoinColumn({ name: "deviceSession" })
+    deviceSession: DeviceSession
 
     @Column({ default: false })
-    status: boolean;
+    isSendNotification: boolean;
+
+
+
 }

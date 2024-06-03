@@ -1,62 +1,104 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable, InternalServerErrorException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { ApoimentDto } from "src/databases/dto/apoiment.dto";
 import { Apoiment } from "src/databases/entity/apoiment.entity";
-import { User } from "src/databases/entity/user.entity";
 import { Repository } from "typeorm";
 import { format } from 'date-fns';
+import { ApoimentDto } from "./dto/apoiment.dto";
+import { UserService } from "../user/user.service";
 
 
 @Injectable()
 export class ApoimentService {
-    constructor(@InjectRepository(Apoiment)
-    private apoimentRepository: Repository<Apoiment>,
-        @InjectRepository(User)
-        private userRepo: Repository<User>) { }
+    constructor(
+        private readonly userService: UserService,
+        @InjectRepository(Apoiment) private apoimentRepository: Repository<Apoiment>,
+    ) { }
 
 
     async addApoiment(data: ApoimentDto) {
         try {
-            const user = await this.userRepo.findOne({ where: { id: data.userId } });
+            const user = await this.userService.findById(data.userId)
             if (!user) {
-                throw new Error(`user not found`)
+                throw new BadRequestException('User not found');
             }
-            const apoiment = await this.apoimentRepository.save({
+            return await this.apoimentRepository.save({
                 ...data,
                 user
             });
-            return apoiment;
-
         } catch (error) {
-            throw new Error(error);
+            throw new InternalServerErrorException(error);
         }
     }
 
-    async getApoiment() {
-        const currentTime = format(new Date(), 'HH:mm');
-        // console.log(currentTime)
-        const apoiments = await this.apoimentRepository
-            .createQueryBuilder("apoiment")
-            .where("apoiment.time = :currentTime ", { currentTime })
-            .leftJoinAndSelect('apoiment.user', 'user')
-            .getMany();
-        return apoiments;
+    async getAllApoiment() {
+        try {
+            return await this.apoimentRepository.find();
+        }
+        catch (error) {
+            throw new InternalServerErrorException(error);
+        }
+    }
+
+    async getApoimentAtCurrentTime() {
+        try {
+            const currentTime = format(new Date(), 'HH:mm');
+            console.log(currentTime)
+            return await this.apoimentRepository
+                .createQueryBuilder("apoiment")
+                .where("apoiment.time = :currentTime ", { currentTime })
+                .leftJoinAndSelect("apoiment.deviceSession", "deviceSession")
+                .leftJoinAndSelect('deviceSession.user', 'user')
+                .getMany();
+        }
+        catch (error) {
+            throw new InternalServerErrorException(error);
+        }
     }
 
     async getApoimentByUserId(userId: number) {
-        const apoiments = await this.apoimentRepository
-            .createQueryBuilder("apoiment")
-            .where("apoiment.userId = :userId ", { userId })
-            .leftJoinAndSelect('apoiment.user', 'user')
-            .getMany();
-        return {
-            data: apoiments,
-            title: "Lịch hẹn gặp bác sĩ"
-        };
+        try {
+            const user = await this.userService.findById(userId)
+            if (!user) {
+                throw new BadRequestException('User not found');
+            }
+            const apoiments = await this.apoimentRepository
+                .createQueryBuilder("apoiment")
+                .where("apoiment.userId = :userId ", { userId })
+                .leftJoinAndSelect('apoiment.user', 'user')
+                .getMany();
+            return {
+                data: apoiments,
+                title: "Lịch hẹn gặp bác sĩ"
+            };
+        }
+        catch (error) {
+            throw new InternalServerErrorException(error);
+        }
+    }
+
+    async updateApoiment(id: number, dataUpdate: ApoimentDto) {
+        try {
+            const apoiment = await this.apoimentRepository.find({ where: { id: id } });
+            if (!apoiment) {
+                throw new BadRequestException('apoiment not found');
+            }
+            return await this.apoimentRepository.update({ id: id }, { ...dataUpdate });
+        }
+        catch (error) {
+            throw new InternalServerErrorException(error);
+        }
     }
 
     async delApoimentByid(id: number) {
-        const results = await this.apoimentRepository.delete({ id: id });
-        return results;
+        try {
+            const apoiment = await this.apoimentRepository.find({ where: { id: id } });
+            if (!apoiment) {
+                throw new BadRequestException('apoiment not found');
+            }
+            return await this.apoimentRepository.delete({ id: id });
+        }
+        catch (error) {
+            throw new InternalServerErrorException(error);
+        }
     }
 }

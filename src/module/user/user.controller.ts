@@ -1,11 +1,10 @@
-import { Controller, Get, Post, Body, Param, Request, Patch, Delete, ParseIntPipe, ForbiddenException, HttpException, HttpStatus, UseInterceptors, ValidationPipe, ClassSerializerInterceptor, Inject } from "@nestjs/common";
+import { Controller, Get, Post, Body, Param, Patch, Delete, ParseIntPipe, ForbiddenException, HttpException, HttpStatus, UseInterceptors, ValidationPipe, ClassSerializerInterceptor, Inject, Req } from "@nestjs/common";
 import { UserService } from "./user.service";
 import { Roles } from "src/common/decorator/role.decorator";
 import { UserRoles } from "src/common/utils/user.role";
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { IdParamDto } from "src/databases/dto/id-param.dto";
-import { Public } from "src/common/decorator/public-auth-guard.decorator";
-import { UserDto } from "src/databases/dto/user.dto";
+import { IdParamDto } from "src/module/user/dto/id-param.dto";
+import { UserDto } from "src/module/user/dto/user.dto";
 import { successMessage } from "src/common/utils/get-respone-success";
 
 
@@ -22,59 +21,45 @@ export class UserController {
     // Get------------------------------------------------------
 
 
-
+    @Roles(UserRoles.ADMIN)
     @ApiOperation({ summary: "Admin lấy tất cả user" })
     @Get()
-    async findUser() {
-        try {
-            const result = await this.userService.findAllUser();
-            return successMessage(result)
-        } catch {
-            throw new HttpException("Can not get users ", HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+    async findAllUser() {
+        const users = await this.userService.findAllUser();
+        return successMessage(users)
     }
 
 
     @ApiOperation({ summary: "Admin tìm kiếm người dùng theo keyword" })
-    @Get('/:keyword')
+    @Get('find-by-name/:name')
     async findByname(@Param('keyword') keyword: string) {
-        try {
-            const data = await this.userService.findByName(keyword);
-            return successMessage(data);
-        }
-        catch {
-            throw new HttpException("Can not get users ", HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        const userByKeyword = await this.userService.findByName(keyword);
+        return successMessage(userByKeyword);
+
     }
+
+
 
 
 
     // Patch------------------------------------------------------
 
 
-    @ApiOperation({ summary: "Admin thay đổi thông tin người dùng " })
-    @Patch('/:id')
-    async update(@Param() param: IdParamDto, @Body(new ValidationPipe()) body: UserDto) {
-        try {
-            return await this.userService.updateUser(param.id, body);
-        }
-        catch {
-            throw new HttpException("Can not update ", HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+    @ApiOperation({ summary: "Thay đổi thông tin người dùng " })
+    @Patch('/update-my-profile')
+    async update(@Req() req, @Body() body: UserDto) {
+        const userId = req?.user?.sub;
+        return await this.userService.updateUser(userId, body);
     }
 
 
     // Delete ----------------------------------------------------
-
+    // @Roles(UserRoles.ADMIN)
     @ApiOperation({ summary: "Admin xóa người dùng" })
     @Delete('/:id')
     async delete(@Param() param: IdParamDto) {
-        try {
-            return await this.userService.deleteUser(param.id);
-        }
-        catch {
-            throw new HttpException("Can not delete user", HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        return await this.userService.deleteUser(param.id);
+
     }
 
 
@@ -84,14 +69,16 @@ export class UserController {
 
 
     @Post('/save-device-token/:id')
-    async saveDeviceToken(@Param('id') id: number, @Body('token') token: string) {
-        try {
-            console.log("token", token)
-            return await this.userService.sendDeviceToken(id, token);
+    async saveDeviceToken(@Req() req, @Body() token: string) {
+        const userId = req?.user?.sub;
+        return await this.userService.updateDeviceToken(userId, token);
+    }
 
-        } catch (error) {
-            throw new Error(error);
-        }
+
+    @Post('/exportCSV')
+    async exportCSV() {
+        const filePathCSV = await this.userService.exportCSVFile();
+        return successMessage(filePathCSV);
     }
 
 

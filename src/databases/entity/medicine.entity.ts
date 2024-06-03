@@ -1,5 +1,4 @@
 import { Column, Entity, JoinTable, ManyToMany, PrimaryGeneratedColumn } from "typeorm";
-import { Prescuption } from "./prescuption.entity";
 
 
 @Entity()
@@ -17,9 +16,4 @@ export class Medicine {
     @Column()
     notes: string
 
-    @ManyToMany(() => Prescuption)
-    @JoinTable({
-        name: 'medicine_precuption'
-    })
-    prescuption: Prescuption[];
 }

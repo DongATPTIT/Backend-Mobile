@@ -1,5 +1,5 @@
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
-import { Schedule } from "./schedule.entity";
+import { ScheduleMedicine } from "./schedule-medicine.entity";
 
 
 @Entity()
@@ -23,6 +23,6 @@ export class TakeMedicine {
     @Column()
     notes: string;
 
-    @ManyToOne(() => Schedule, (schedule) => schedule.take_medicine)
-    schedule: Schedule;
+    @ManyToOne(() => ScheduleMedicine, (schedule) => schedule.take_medicine)
+    schedule: ScheduleMedicine;
 }

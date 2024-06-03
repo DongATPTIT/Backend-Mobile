@@ -1,16 +1,17 @@
 import { Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from "typeorm";
 import { User } from "./user.entity";
 
+
 @Entity()
-export class Booking {
+export class HealthUser {
     @PrimaryGeneratedColumn()
     id: number;
 
     @Column()
-    time: number;
+    height: number;
 
     @Column()
-    date: Date;
+    weight: number;
 
     @OneToOne(() => User)
     @JoinColumn()

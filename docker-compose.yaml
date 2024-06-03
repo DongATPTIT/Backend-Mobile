@@ -17,7 +17,7 @@ services:
     env_file:
       - .env
     networks:
-      - default
+      - backend_network
 
   #Backend
   backend_mobile:
@@ -35,9 +35,13 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      - ./:/app/backend_mobile
-      - /app/backend_mobile/node_modules
+      - ./:/app/
+      - /app/node_modules
+    depends_on:
+      - mysql
     networks:
-      - default
+      - backend_network
+networks:
+  backend_network:
 volumes:
   mysql:

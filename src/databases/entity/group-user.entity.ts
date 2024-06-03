@@ -2,7 +2,7 @@ import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "ty
 import { User } from "./user.entity";
 
 @Entity()
-export class Group {
+export class GroupUser {
 
     @PrimaryGeneratedColumn()
     id: number;

@@ -1,7 +1,8 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
-import { Group } from "./group.entity";
 import { Exclude } from "class-transformer";
-import { Apoiment } from "./apoiment.entity";
+import { DeviceSession } from "./device-session.entity";
+import { UserRoles } from "src/common/utils/user.role";
+import { GroupUser } from "./group-user.entity";
 
 
 @Entity()
@@ -16,6 +17,7 @@ export class User {
     @Column()
     username: string;
 
+    @Exclude()
     @Column()
     password: string;
 
@@ -25,20 +27,16 @@ export class User {
     @Column()
     phone: number;
 
+    @Exclude()
+    @Column({ default: UserRoles.USER })
+    role: UserRoles;
+
     @Column({ default: null })
     image: string;
 
-    @ManyToOne(() => Group, (group) => group.user)
-    group: Group;
+    @ManyToOne(() => GroupUser, (group) => group.user)
+    group: GroupUser;
 
-    @OneToMany(() => Apoiment, (photo) => photo.user)
-    apoiment: Apoiment[]
-
-    @Exclude()
-    @Column({ default: null })
-    refreshToken: string;
-
-    @Exclude()
-    @Column({ default: null })
-    deviceToken: string;
+    @OneToMany(() => DeviceSession, (deviceSessions) => deviceSessions.user)
+    deviceSessions: DeviceSession[];
 }

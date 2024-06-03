@@ -1,13 +1,12 @@
-import { ForbiddenException, Injectable } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, Req, UnauthorizedException } from "@nestjs/common";
 import { error } from "console";
 import { UserService } from "src/module/user/user.service";
 import * as bcrypt from "bcrypt";
 import { JwtService } from "@nestjs/jwt";
-// import * as argon2 from 'argon2';
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { RegisterAccountDto } from "src/databases/dto/register-account.dto";
-import { User } from "src/databases/entity/user.entity";
+import { RegisterAccountDto } from "src/module/auth/dto/register-account.dto";
+import { DeviceSession } from "src/databases/entity/device-session.entity";
 
 
 
@@ -16,22 +15,21 @@ export class AuthService {
     constructor(
         private readonly userService: UserService,
         private readonly jwtService: JwtService,
-        @InjectRepository(User) private userRepository: Repository<User>,
+        @InjectRepository(DeviceSession) private deviceSession: Repository<DeviceSession>
     ) { }
 
-    async createUser(dto: RegisterAccountDto) {
+    async createUser(user: RegisterAccountDto, deviceId: string) {
         try {
-            const check = await this.userRepository.findOne({ where: { username: dto.username } });
-            console.log(check);
-            if (check !== null) {
-                throw new Error("Email already exists");
+            const keywordFindUser = "username"
+            const checkUserExists = await this.userService.findUserByKey(keywordFindUser, user.username);
+            if (checkUserExists.length > 0) {
+                throw new BadRequestException("user already exists");
             }
-            dto.password = await bcrypt.hash(dto.password, 10);
-            const newUser = await this.userRepository.save(dto);
+            user.password = await bcrypt.hash(user.password, 10);
+            const newUser = await this.userService.addNewUser(user);
             const { password, refreshToken, ...rest } = newUser;
             const tokens = await this.getTokens(newUser.id, newUser.username);
-            await this.updateRefreshToken(newUser.id, tokens.refreshToken);
-            // console.log(tokens.refreshToken)
+            await this.updateRefreshToken(newUser.id, tokens.refreshToken, deviceId);
             return {
                 message: "User created successfully",
                 data: rest,
@@ -39,103 +37,156 @@ export class AuthService {
             };
         }
         catch (error) {
-            console.log(error.message);
-            throw new Error(error);
+            throw new InternalServerErrorException(error);
         }
 
     }
-    async signIn(username: string, pass: string) {
-        const user = await this.userService.findByEmail(username);
-        if (!user) {
-            throw new Error("Email not found");
-        }
-        const check = await bcrypt.compare(pass, user.password);
-        if (!check) {
-            throw new error
-        }
-        const tokens = await this.getTokens(user.id, user.username)
-
-        // const payload = { sub: user.id, username: user.name, email: user.email, role: user.role };
-        // const access_token = await this.jwtService.signAsync(payload);
-        await this.updateRefreshToken(user.id, tokens.refreshToken);
-        return {
-            tokens: tokens.refreshToken,
-        };
-    }
-
-    async logOut(id: number) {
+    async signIn(username: string, pass: string, deviceId: string) {
         try {
-            await this.userService.updateUser(id, { refreshToken: null });
+            const user = await this.userService.findByUsername(username);
+            if (!user) {
+                throw new BadRequestException("user not found");
+            }
+            const checkPassword = await bcrypt.compare(pass, user.password);
+            if (!checkPassword) {
+                throw new BadRequestException("password is not match");
+            }
+            const tokens = await this.getTokens(user.id, user.username);
+
+            await this.updateRefreshToken(user.id, tokens.refreshToken, deviceId);
+            return {
+                tokens: tokens.refreshToken,
+            };
+        }
+        catch (error) {
+            throw new InternalServerErrorException(error);
+        }
+    }
+
+    async logOut(userId: number, deviceId: string) {
+        try {
+            const checkUserExists = await this.userService.checkUserExists(userId);
+            if (!checkUserExists) {
+                throw new BadRequestException('user not found');
+            }
+            await this.deviceSession.update({ deviceId: deviceId }, { refreshToken: null });
             return {
                 message: "logout successfully",
             }
         }
-        catch (err) {
-            throw new Error(err)
+        catch (error) {
+            throw new InternalServerErrorException(error);
         }
     }
 
-    // async logOutAllUsers() {
-    //     const data = await this.userRepository.update(
-    //         // { role: UserRoles.USER },
-    //         { refreshToken: null }
-    //     );
-    //     return {
-    //         message: "logout all users successfully",
-    //     }
-    // }
+    async logOutAllUsers(id: number) {
+        try {
+            const user = await this.userService.findById(id);
+            if (!user) {
+                throw new BadRequestException('user not found');
+            }
+            await this.deviceSession.createQueryBuilder()
+                .update(DeviceSession)
+                .set({ refreshToken: null })
+                .where('userId = :userId', { userId: id })
+                .execute();
+            return {
+                message: "logout all users successfully",
+            }
+        }
+        catch (error) {
+            throw new InternalServerErrorException(error);
+        }
+    }
 
-    async updateRefreshToken(userId: number, refreshToken: string) {
-        const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
-        await this.userService.updateUser(userId, { refreshToken: hashedRefreshToken });
+    async updateRefreshToken(userId: number, refreshToken: string, fingerprint: string) {
+        try {
+            const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+            const currentDevice = await this.deviceSession.findOne({
+                where: { deviceId: fingerprint },
+            });
+            const user = await this.userService.findById(userId);
+            if (!currentDevice) {
+                if (!user) {
+                    throw new BadRequestException("User not found");
+                }
+                await this.deviceSession.save({ deviceId: fingerprint, refreshToken: hashedRefreshToken, user: user });
+            }
+            return await this.deviceSession.update({ deviceId: fingerprint }, { deviceId: fingerprint, refreshToken: hashedRefreshToken, user: user });
+        }
+        catch (error) {
+            throw new InternalServerErrorException(error);
+        }
     }
 
     async getTokens(userId: number, username: string) {
-        process.env.SECRET_KEY_ACCESS_TOKEN
-        const [accessToken, refreshToken] = await Promise.all([
-            this.jwtService.signAsync(
-                {
-                    sub: userId,
-                    username: username,
-                    // role: role,
-                },
-                {
-                    secret: process.env.SECRET_KEY_ACCESS_TOKEN,
-                    expiresIn: '15m',
-                },
-            ),
-            this.jwtService.signAsync(
-                {
-                    sub: userId,
-                    username: username,
-                    // role: role
-                },
-                {
-                    secret: process.env.SECRET_KEY_REFRESH_TOKEN,
-                    expiresIn: '7d',
-                },
-            ),
-        ]);
-        return {
-            accessToken,
-            refreshToken,
-        };
+        try {
+            const user = await this.userService.findById(userId);
+            if (!user) {
+                throw new BadRequestException("User not found");
+            }
+            const [accessToken, refreshToken] = await Promise.all([
+                this.jwtService.signAsync(
+                    {
+                        sub: userId,
+                        username: username,
+                        // role: role,
+                    },
+                    {
+                        secret: process.env.SECRET_KEY_ACCESS_TOKEN,
+                        expiresIn: '15m',
+                    },
+                ),
+                this.jwtService.signAsync(
+                    {
+                        sub: userId,
+                        username: username,
+                        // role: role
+                    },
+                    {
+                        secret: process.env.SECRET_KEY_REFRESH_TOKEN,
+                        expiresIn: '7d',
+                    },
+                ),
+            ]);
+            return {
+                accessToken,
+                refreshToken,
+            };
+        }
+        catch (error) {
+            throw new InternalServerErrorException(error);
+
+        }
     }
 
-    async refreshTokens(id: number, refreshToken: string) {
-        const user = await this.userService.findById(id);
-        if (!user || !user.refreshToken) {
-            throw new ForbiddenException('Access Denied');
+    async refreshTokens(userId: number, refreshToken: string, deviceId: string) {
+        try {
+            const user = await this.userService.findById(userId);
+            if (!user) {
+                throw new BadRequestException("User not found");
+            }
+            const currentDevice = await this.deviceSession
+                .createQueryBuilder("deviceSession")
+                .leftJoinAndSelect("deviceSession.user", "user")
+                .where("deviceSession.deviceId = :id", { id: deviceId })
+                .getOne();
+            if (!currentDevice || !currentDevice.refreshToken) {
+                throw new BadRequestException('current device is not available');
+            }
+            const refreshTokenMatches = await bcrypt.compare(
+                refreshToken,
+                currentDevice.refreshToken,
+            );
+            if (!refreshTokenMatches) {
+                throw new BadRequestException('token mismatch');
+            }
+            const tokens = await this.getTokens(currentDevice.user.id, currentDevice.user.username,);
+            await this.updateRefreshToken(currentDevice.user.id, tokens.refreshToken, deviceId);
+            return tokens;
         }
-        const refreshTokenMatches = await bcrypt.compare(
-            refreshToken,
-            user.refreshToken,
-        );
-        if (!refreshTokenMatches) {
-            throw new ForbiddenException('Access Denied');
+        catch (error) {
+            throw new InternalServerErrorException(error);
         }
-        const tokens = await this.getTokens(user.id, user.username,);
-        await this.updateRefreshToken(user.id, tokens.refreshToken);
-        return tokens;
     }
 }

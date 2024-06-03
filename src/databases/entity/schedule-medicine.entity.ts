@@ -4,7 +4,7 @@ import { TakeMedicine } from "./take_medicine.entity";
 
 
 @Entity()
-export class Schedule {
+export class ScheduleMedicine {
     @PrimaryGeneratedColumn()
     id: number;
 

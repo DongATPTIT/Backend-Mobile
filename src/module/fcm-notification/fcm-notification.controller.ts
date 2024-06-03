@@ -9,10 +9,9 @@ export class FcmNotificationController {
         private readonly fcmNotificationService: FcmNotificationService,
     ) { }
 
-    @Post('/send-notification/:id')
-    async sendNotification(@Param('id') id, @Body() payload) {
+    @Post('/send-notification')
+    async sendNotification(@Body() payload) {
         try {
-            console.log(payload)
             return this.fcmNotificationService.sendNotification(payload);
         }
         catch (error) {

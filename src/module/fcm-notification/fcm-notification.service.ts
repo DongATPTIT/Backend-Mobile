@@ -1,11 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { SchedulerRegistry } from '@nestjs/schedule';
 import * as admin from 'firebase-admin';
-import { UserService } from '../user/user.service';
-import { Repository } from 'typeorm';
-import { User } from 'src/databases/entity/user.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { error } from 'console';
 
 admin.initializeApp({
     credential: admin.credential.cert({
@@ -16,13 +10,9 @@ admin.initializeApp({
 });
 @Injectable()
 export class FcmNotificationService {
-    constructor(
-
-    ) { }
 
     async sendNotification(payload) {
         try {
-            // console.log(payload)
             return admin.messaging().send(payload)
         }
         catch (error) {

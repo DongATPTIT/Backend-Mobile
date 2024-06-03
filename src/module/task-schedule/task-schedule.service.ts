@@ -9,26 +9,24 @@ export class taskScheduleService {
         private readonly fcmNotificationService: FcmNotificationService
     ) { }
 
-    @Cron('0 * * * * *')
+    // @Cron('0 * * * * *')
     // @Cron('*/15 * * * * *')
 
     async pushNotifications() {
-        const apoiments = await this.apoimentService.getApoiment();
-        console.log("a", apoiments);
+        const apoiments = await this.apoimentService.getApoimentAtCurrentTime();
         let payload = {
             token: "",
             notification: {
-                title: "Hi there this is title",
-                body: "Hi there this is message"
+                title: "Hello, your appointment time has come",
             },
             data: {
-                name: "",
-                age: "21"
+                name: ""
             }
+
         }
         apoiments.forEach((apoiment) => {
-            payload.data.name = apoiment.user.name;
-            payload.token = apoiment.user.deviceToken
+            payload.data.name = apoiment.deviceSession.user.name;
+            payload.token = apoiment.deviceSession.deviceToken;
             return this.fcmNotificationService.sendNotification(payload)
         })
     }
